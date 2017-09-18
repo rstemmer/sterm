@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # STERM, a serial communication terminal with server capabilities        #
@@ -21,6 +21,7 @@ import sys
 import os
 import time
 import argparse
+import binascii
 from threading import Thread
 
 try:
@@ -32,10 +33,17 @@ except:
 
 
 
-VERSION = "4.1.0"
+VERSION = "4.2.0"
+
+# CHANGELOG
+#
+# 4.2.0
+#  + "--binary" option added
+#  * shebang fixed
+#
+
 
 ShutdownReceiver = False
-
 
 
 cli = argparse.ArgumentParser(
@@ -43,6 +51,8 @@ cli = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
+cli.add_argument(      "--binary",      default=False,                action="store_true",
+    help="Display raw data instead of UTF-8 encoded. (read only)")
 cli.add_argument("-b", "--baudrate",    default=115200,     type=int, action="store",
     help="The baudrate used for the communication.")
 cli.add_argument("-f", "--format",      default="8N1",      type=str, action="store",
@@ -67,7 +77,7 @@ STOPBITMAP["2"] = STOPBITS_TWO
 
 
 
-def rec_thread(rs232):
+def rec_thread(rs232, binary=False):
     data = ""
     while not ShutdownReceiver:
 
@@ -77,7 +87,14 @@ def rec_thread(rs232):
             return
 
         if data:
-            sys.stdout.write(data.decode("utf-8"))
+
+            if binary:
+                string = binascii.hexlify(data).decode("utf-8")
+                string = " ".join(["0x"+string[i:i+2] for i in range(0, len(string), 2)]) + " "
+            else:
+                string = data.decode("utf-8")
+
+            sys.stdout.write(string)
             sys.stdout.flush()
       
         time.sleep(0.1);
@@ -122,7 +139,7 @@ if __name__ == '__main__':
     
     print("\n\033[1;31m --[ \033[1;34msterm \033[1;31m//\033[1;34m " + VERSION + "\033[1;31m ]-- \033[0m\n")
 
-    ReceiverThread = Thread(target=rec_thread, args=(uart,))
+    ReceiverThread = Thread(target=rec_thread, args=(uart,args.binary))
     ReceiverThread.start()
 
     cmd = ""

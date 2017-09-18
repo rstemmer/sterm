@@ -27,10 +27,11 @@ pip3 install pyserial
 ### Command Line Arguments
 
 ```bash
-sterm [-h|-b BAUDRATE|-f FORMAT] DEVICE
+sterm [-h] [--binary] [-b BAUDRATE] [-f FORMAT] DEVICE
 ```
 
   * __-h__: Print help.
+  * __--binary__: Print hexadecimal values instead of unicode charactes. (Only applied on output, input will still be UTF-8)
   * __-b__: Baudrate. _Default:_ 115200 baud.
   * __-f__: Configuration-triple: xyz with x = bytelength in bits {5,6,7,8}; y = parity {N,E,O}; z = stopbits {1,2}. _Default:_ "8N1" - _8_ data bits, _no_ parity bits and _1_ stop bit.
 
