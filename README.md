@@ -2,7 +2,11 @@
 # sterm
 
 sterm is a minimal serial terminal that focus on being easy to use and not sucking. - This client simply works.
-It has inline input and supports unicode. It writes whatever it receives to stdout so that also ANSI escape sequences work as expected.
+It has inline input and supports unicode (utf-8).
+It writes whatever it receives to stdout so that also ANSI escape sequences work as expected.
+
+With the ``--binary`` option, the received data will be output byte wise as hexadecimal numbers.
+Ideal for debugging.
 
 
 ## Installation

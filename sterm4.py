@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # STERM, a serial communication terminal with server capabilities        #
-# Copyright (C) 2013,2014,2015,2016,2017  Ralf Stemmer (ralf.stemmer@gmx.net)
+# Copyright (C) 2013,2014,2015,2016,2017,2018  Ralf Stemmer (ralf.stemmer@gmx.net)
 #                                                                        #
 # This program is free software: you can redistribute it and/or modify   #
 # it under the terms of the GNU General Public License as published by   #
@@ -33,7 +33,7 @@ except:
 
 
 
-VERSION = "4.2.0"
+VERSION = "4.2.1"
 
 # CHANGELOG
 #
@@ -92,7 +92,11 @@ def rec_thread(rs232, binary=False):
                 string = binascii.hexlify(data).decode("utf-8")
                 string = " ".join(["0x"+string[i:i+2] for i in range(0, len(string), 2)]) + " "
             else:
-                string = data.decode("utf-8")
+                try:
+                    string = data.decode("utf-8")
+                except UnicodeDecodeError:
+                    string = "[" + str(data) + "]"
+
 
             sys.stdout.write(string)
             sys.stdout.flush()
