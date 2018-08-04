@@ -8,6 +8,7 @@ It writes whatever it receives to stdout so that also ANSI escape sequences work
 With the ``--binary`` option, the received data will be output byte wise as hexadecimal numbers.
 Ideal for debugging.
 
+**Project State:** Alive and maintained
 
 ## Installation
 
