@@ -1,0 +1,81 @@
+.TH STERM 1 "16 August 2018" "4.2.1" "sterm Manual"
+.SH NAME
+sterm \- a minimal serial terminal that focus on being easy to use. A client simply works.
+
+.SH SYNOPSIS
+.B sterm
+[\fB\-h\fR | \fB\-\-help\fR] [\fB\-\-binary\fR] [\fB\-b \fIbaudrate\fR | \fB\-\-baudrate \fIbaudrate\fR] [\fB\-f \fIformat\fR | \fB\-\-format \fIformat\fR]
+.IR "device"
+.br
+
+.SH DESCRIPTION
+sterm is a minimal serial terminal that focus on being easy to use and not sucking. - This client simply works.
+.br
+It has inline input and supports Unicode (utf-8).
+It writes whatever it receives to stdout so that also ANSI escape sequences work as expected.
+.br
+With the \fI--binary\fR option, the received data will be output byte wise as hexadecimal numbers.
+Ideal for debugging.
+
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Display a help, version number and exit
+.TP
+.BR \-\-binary
+Print hexadecimal values instead of Unicode characters. (Only applied on output, input will still be UTF-8)
+.TP
+.BR \-b " " \fIbaudrate\fB  ", " \-\-baudrate " " \fIbaudrate\fR
+Define the baudrate used for receiving and transmitting.
+.br
+Default: 115200 baud.
+.TP
+.BR \-f " " \fIformat\fB  ", " \-\-format " " \fIformat\fR
+Configuration-triple: xyz with x = byte length in bits {5,6,7,8}; y = parity {N,E,O}; z = stop bits {1,2}.
+.br
+Default: "8N1" - 8 data bits, no parity bits and 1 stop bit.
+.TP
+.BR \fIdevice\fR
+.br
+Serial I/O device to access
+
+.SH EXIT STATUS
+.TP
+0
+Everything OK
+.TP
+1
+On error
+
+.SH EXAMPLES
+.nf
+.B sterm /dev/ttyUART0
+
+.fi
+Connect to UART device with 115200 baud, 8 data bits, 1 stop bit and no parity bit (8N1)
+
+.P
+.B sterm --binary -b 9600 -f 7E2 /dev/ttyS0
+
+.fi
+Connect with 9600 baud, 7 data bits, 2 stop bits and even parity:
+
+.SH AUTHOR
+Written by Ralf Stemmer <ralf.stemmer@gmx.net>
+
+.SH REPORTING BUGS
+GitHub: <https://github.com/rstemmer/sterm/issues>
+
+.SH COPYRIGHT
+onpts  Copyright (C) 2018  Ralf Stemmer <ralf.stemmer@gmx.net>
+.br
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
+.br
+This program comes with ABSOLUTELY NO WARRANTY
+.br
+This is free software, and you are welcome to redistribute it
+under certain conditions.
+
+.SH SEE ALSO
+Full documentation at: <https://github.com/rstemmer/sterm>
+
