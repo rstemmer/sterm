@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # STERM, a serial communication terminal with server capabilities        #
-# Copyright (C) 2013,2014,2015,2016,2017,2018  Ralf Stemmer (ralf.stemmer@gmx.net)
+# Copyright (C) 2013-2019  Ralf Stemmer (ralf.stemmer@gmx.net)           #
 #                                                                        #
 # This program is free software: you can redistribute it and/or modify   #
 # it under the terms of the GNU General Public License as published by   #
@@ -19,6 +19,8 @@
 
 import sys
 import os
+import tty
+import termios
 import time
 import argparse
 import binascii
@@ -33,14 +35,7 @@ except:
 
 
 
-VERSION = "4.2.1"
-
-# CHANGELOG
-#
-# 4.2.0
-#  + "--binary" option added
-#  * shebang fixed
-#
+VERSION = "5.0.0"
 
 
 ShutdownReceiver = False
@@ -53,6 +48,10 @@ cli = argparse.ArgumentParser(
 
 cli.add_argument(      "--binary",      default=False,                action="store_true",
     help="Display raw data instead of UTF-8 encoded. (read only)")
+cli.add_argument("-u", "--unbuffered",  default=False,                action="store_true",
+    help="Direct character transmission. Does not buffer a whole line for the user input.")
+cli.add_argument(      "--escape",      default="\033",     type=str, action="store",
+    help="Change the default escape character (escape) when in unbuffered input mode")
 cli.add_argument("-b", "--baudrate",    default=115200,     type=int, action="store",
     help="The baudrate used for the communication.")
 cli.add_argument("-f", "--format",      default="8N1",      type=str, action="store",
@@ -75,14 +74,16 @@ STOPBITMAP = {}
 STOPBITMAP["1"] = STOPBITS_ONE
 STOPBITMAP["2"] = STOPBITS_TWO
 
+UNBUFFERED = False
+ESCAPECHAR = "\033"
 
 
-def rec_thread(rs232, binary=False):
+def ReceiveData(uart, binary=False):
     data = ""
     while not ShutdownReceiver:
 
         try:
-            data = rs232.read(rs232.inWaiting())
+            data = uart.read(uart.inWaiting())
         except:
             return
 
@@ -105,13 +106,83 @@ def rec_thread(rs232, binary=False):
 
 
 
+def ReadCommand():
+    char    = ""
+    command = ""
+
+    while True:
+        char = sys.stdin.read(1)
+        if char == "\r":
+            break
+        elif char == ESCAPECHAR:
+            if len(command) == 0:
+                command = ESCAPECHAR
+            break
+        else:
+            sys.stdout.write(char)
+            sys.stdout.flush()
+            command += char
+
+    sys.stdout.write("\r\n")
+    sys.stdout.flush()
+    return command
+
+def HandleUnbufferedUserInput():
+    char = ""
+
+    while True:
+        char = sys.stdin.read(1)
+
+        if char == ESCAPECHAR:
+            command = ReadCommand()
+
+            if command == ESCAPECHAR:
+                uart.write(ESCAPECHAR.encode("utf-8"))
+
+            if command == "exit":
+                break
+
+            elif command == "version":
+                print("Version: " + VERSION, end="\r\n")
+        else:
+            # In this mode, \n needs to be added manually to get a new line
+            if char == "\r":
+                char += "\n"
+            data = char.encode("utf-8")
+            uart.write(data)
+
+
+
+def HandleBufferedUserInput():
+    command = ""
+
+    while True:
+        command = input("")
+
+        if command == ".exit":
+            break
+
+        elif command == ".version":
+            print("Version: " + VERSION)
+
+        else:
+            command += "\n"
+            data = command.encode("utf-8")
+            uart.write(data)
+    return
+
+
+
 if __name__ == '__main__':
+    print("\n\033[1;31m --[ \033[1;34msterm \033[1;31m//\033[1;34m " + VERSION + "\033[1;31m ]-- \033[0m\n")
 
     # handle command line arguments
-    args     = cli.parse_args()
-    DEVICE   = args.device
-    BAUDRATE = args.baudrate
-    FORMAT   = args.format
+    args       = cli.parse_args()
+    DEVICE     = args.device
+    BAUDRATE   = args.baudrate
+    FORMAT     = args.format
+    UNBUFFERED = args.unbuffered
+    ESCAPECHAR = args.escape
 
     # translate format-string
     try:
@@ -123,7 +194,7 @@ if __name__ == '__main__':
         print("Use --help as argument to display the help including the format-description.")
         exit(1)
 
-    # Open terminal device
+    # Open remote terminal device
     try:
         uart = Serial(
             port    = DEVICE,
@@ -140,34 +211,35 @@ if __name__ == '__main__':
         print("\033[1;31mAccessing \033[1;37m" + DEVICE + " \033[1;31mfailed with the following excpetion:\033[0m")
         print(e)
         exit(1)
-    
-    print("\n\033[1;31m --[ \033[1;34msterm \033[1;31m//\033[1;34m " + VERSION + "\033[1;31m ]-- \033[0m\n")
 
-    ReceiverThread = Thread(target=rec_thread, args=(uart,args.binary))
+    # Setup local terminal
+    if UNBUFFERED:
+        stdinfd          = sys.stdin.fileno()
+        oldstdinsettings = termios.tcgetattr(stdinfd)
+        tty.setraw(stdinfd) # from now on, end-line must be "\r\n"
+    
+    # Start receiver thread
+    ReceiverThread = Thread(target=ReceiveData, args=(uart,args.binary))
     ReceiverThread.start()
 
-    cmd = ""
-
-    while cmd != ".exit":
-        cmd = input("")
-
-        if cmd == ".exit":
-            print("\n\033[1;37m\033[44m >> Stopping all Threads… << \033[0m\n")
-            ShutdownReceiver = True
-
-            if ReceiverThread.isAlive():
-                ReceiverThread.join()
-            break
-
-        elif cmd == ".version":
-            print("Version: " + VERSION)
-
+    # this is the main loop of this software
+    try:
+        if UNBUFFERED:
+            HandleUnbufferedUserInput();
         else:
-            cmd += "\n"
-            data = cmd.encode("utf-8")
-            uart.write(data)
+            HandleBufferedUserInput();
+    except:
+        # catch all to be able to clean up
+        pass
 
+    # Shutdown receiver thread
+    ShutdownReceiver = True
+    if ReceiverThread.isAlive():
+        ReceiverThread.join()
 
+    # Clean up everything
+    if UNBUFFERED:
+        termios.tcsetattr(stdinfd, termios.TCSADRAIN, oldstdinsettings)
     uart.close()
 
 

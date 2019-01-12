@@ -4,7 +4,12 @@ sterm \- a minimal serial terminal that focus on being easy to use. A client sim
 
 .SH SYNOPSIS
 .B sterm
-[\fB\-h\fR | \fB\-\-help\fR] [\fB\-\-binary\fR] [\fB\-b \fIbaudrate\fR | \fB\-\-baudrate \fIbaudrate\fR] [\fB\-f \fIformat\fR | \fB\-\-format \fIformat\fR]
+[\fB\-h\fR | \fB\-\-help\fR] 
+[\fB\-u\fR | \fB\-\-unbuffered\fR]
+[\fB\-\-escape \fIcharacter\fR]
+[\fB\-\-binary\fR]
+[\fB\-b \fIbaudrate\fR | \fB\-\-baudrate \fIbaudrate\fR]
+[\fB\-f \fIformat\fR | \fB\-\-format \fIformat\fR]
 .IR "device"
 .br
 
@@ -16,6 +21,16 @@ It writes whatever it receives to stdout so that also ANSI escape sequences work
 .br
 With the \fI--binary\fR option, the received data will be output byte wise as hexadecimal numbers.
 Ideal for debugging.
+.br
+sterm has some internal commands, listed below.
+To enter a command you first have to enter an escape character.
+The escape-sequence handling depends if the user input mode is unbuffered (\fI--unbuffered\fR) or not.
+In buffered mode, enter a know command with a leading \fI.\fR to execute it.
+When the entered line is not a known command it get send to the remote client.
+In unbuffered mode, entering the escape character (see \fI--escape\fR) opens a command line input.
+There you can enter a command. If this command is known or unknown the input gets rejected.
+There is only one exception. When entering the escape character a second time the escape character gets send to the remove client.
+
 
 .SH OPTIONS
 .TP
@@ -24,6 +39,15 @@ Display a help, version number and exit
 .TP
 .BR \-\-binary
 Print hexadecimal values instead of Unicode characters. (Only applied on output, input will still be UTF-8)
+.TP
+.BR \-u ", " \-\-unbuffered
+Use this flag to avoid input buffering. By default, sterm reads a whole line, and then sends all data at once.
+When this flag is set, each character gets send directly, except when entering the escape key. Then you can enter a command that sterm handles internal.
+In unbuffered mode, the input gets not echoed by sterm.
+.TP
+.BR \-\-escape " " \fIcharacter\fR
+With this parameter, the escape character used in unbuffered input mode (\fI--unbuffered\fR) can be changed.
+By default, it is the escape key (\fI"\\e"\fR).
 .TP
 .BR \-b " " \fIbaudrate\fB  ", " \-\-baudrate " " \fIbaudrate\fR
 Define the baudrate used for receiving and transmitting.
@@ -46,6 +70,14 @@ Everything OK
 .TP
 1
 On error
+
+.SH INTERNAL COMMANDS
+.TP
+.BR exit
+Close sterm
+.TP
+.BR version
+Show the version of sterm
 
 .SH EXAMPLES
 .nf
