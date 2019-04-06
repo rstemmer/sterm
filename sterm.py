@@ -35,7 +35,7 @@ except:
 
 
 
-VERSION = "5.0.0"
+VERSION = "5.0.1"
 
 
 ShutdownReceiver = False
@@ -98,6 +98,11 @@ def ReceiveData(uart, binary=False):
                 except UnicodeDecodeError:
                     string = "[" + str(data) + "]"
 
+            if UNBUFFERED:
+                # In the unbuffered input mode, the output also expects an explicit \r
+                # This is because of the changed, none-default settings of the TTY
+                # Here I take care that the \r\n sequence is correct
+                string = string.replace("\n", "\r\n").replace("\r\r", "\r")
 
             sys.stdout.write(string)
             sys.stdout.flush()
