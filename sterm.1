@@ -1,4 +1,4 @@
-.TH STERM 1 "06 April 2019" "5.0.1" "sterm Manual"
+.TH STERM 1 "16 April 2019" "5.1.0" "sterm Manual"
 .SH NAME
 sterm \- a minimal serial terminal that focus on being easy to use. A client simply works.
 
@@ -24,12 +24,11 @@ Ideal for debugging.
 .br
 sterm has some internal commands, listed below.
 To enter a command you first have to enter an escape character.
-The escape-sequence handling depends if the user input mode is unbuffered (\fI--unbuffered\fR) or not.
-In buffered mode, enter a know command with a leading \fI.\fR to execute it.
-When the entered line is not a known command it get send to the remote client.
-In unbuffered mode, entering the escape character (see \fI--escape\fR) opens a command line input.
-There you can enter a command. If this command is known or unknown the input gets rejected.
-There is only one exception. When entering the escape character a second time the escape character gets send to the remove client.
+Entering the escape character (see \fI--escape\fR) starts a command input.
+If this command is known it gets executed.
+If the command is unknown the input gets rejected in unbuffered mode, and send to the remote terminal in buffered mode.
+When entering the escape character a second time in unbuffered mode,
+the escape character gets send to the remove client.
 
 
 .SH OPTIONS
@@ -46,7 +45,7 @@ When this flag is set, each character gets send directly, except when entering t
 In unbuffered mode, the input gets not echoed by sterm.
 .TP
 .BR \-\-escape " " \fIcharacter\fR
-With this parameter, the escape character used in unbuffered input mode (\fI--unbuffered\fR) can be changed.
+With this parameter, the escape character can be changed.
 By default, it is the escape key (\fI"\\e"\fR).
 .TP
 .BR \-b " " \fIbaudrate\fB  ", " \-\-baudrate " " \fIbaudrate\fR
@@ -99,7 +98,7 @@ Written by Ralf Stemmer <ralf.stemmer@gmx.net>
 GitHub: <https://github.com/rstemmer/sterm/issues>
 
 .SH COPYRIGHT
-onpts  Copyright (C) 2018  Ralf Stemmer <ralf.stemmer@gmx.net>
+sterm  Copyright (C) 2013-2019  Ralf Stemmer <ralf.stemmer@gmx.net>
 .br
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
 .br

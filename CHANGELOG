@@ -1,3 +1,4 @@
+5.1.0 - 16.04.2019: Unified the escape-sequence start symbol to escape (\e)
 5.0.1 - 06.04.2019: Fixed a bug that lead to mishandling "\n"-Only line breaks when in unbuffered mode
 5.0.0 - 12.01.2019: --unbuffered and --escape added to allow unbuffered input data transmission
 

@@ -35,9 +35,11 @@ except:
 
 
 
-VERSION = "5.0.1"
+VERSION = "5.1.0"
 
 
+# This global variable is used to shutdown the thread used
+# for the ReceiveData function.
 ShutdownReceiver = False
 
 
@@ -51,7 +53,7 @@ cli.add_argument(      "--binary",      default=False,                action="st
 cli.add_argument("-u", "--unbuffered",  default=False,                action="store_true",
     help="Direct character transmission. Does not buffer a whole line for the user input.")
 cli.add_argument(      "--escape",      default="\033",     type=str, action="store",
-    help="Change the default escape character (escape) when in unbuffered input mode")
+    help="Change the default escape character (escape)")
 cli.add_argument("-b", "--baudrate",    default=115200,     type=int, action="store",
     help="The baudrate used for the communication.")
 cli.add_argument("-f", "--format",      default="8N1",      type=str, action="store",
@@ -59,8 +61,8 @@ cli.add_argument("-f", "--format",      default="8N1",      type=str, action="st
 cli.add_argument("device",                                  type=str, action="store",
     help="Path to the serial communication device.")
 
-# Mapping the format-string to the pyserial-parameters.
-# This is just a subset. See pyserial-docs to extend these maps.
+# Mapping the format-string (--format) to the pyserial-parameters.
+# This is just a subset of possible parameters. See pyserial-docs to extend these maps.
 BYTESIZEMAP = {}
 BYTESIZEMAP["5"] = FIVEBITS
 BYTESIZEMAP["6"] = SIXBITS
@@ -74,19 +76,62 @@ STOPBITMAP = {}
 STOPBITMAP["1"] = STOPBITS_ONE
 STOPBITMAP["2"] = STOPBITS_TWO
 
-UNBUFFERED = False
-ESCAPECHAR = "\033"
+UNBUFFERED = False      # Enable the unbuffered mode
+ESCAPECHAR = "\033"     # Escape character to start an escape command sequence
 
 
 def ReceiveData(uart, binary=False):
+    """
+    This function reads every 0.1 seconds all data from the serial input buffer.
+    The read data then gets printed to the screen (stdout).
+    After writing to the output buffer, the buffer gets flushed so that the data is visible to the user
+    as soon as possible.
+    The function is blocking and runs until the global variable ``ShutdownReveiver`` get set to ``False``
+    or when reading from the input buffer raises an exception.
+
+    The behavior of this function depends on the ``binary`` argument:
+
+    In *binary mode* the received bytes get encoded as one byte hexadecimal numbers with ``0x`` prefix,
+    space separated and a space at the end of the byte stream.
+    So when receiving the two bytes ``23``, ``42`` the output is ``0x23 0x42 ``.
+
+    In *UTF-8 mode* the received data gets interpreted as UTF-8 encoded Unicode string.
+    When an UnicodeDecodeError-Exception occurs, the raw data gets printed between ``[]``.
+
+    This function is intended to run in a separate thread.
+    The following example shows how to handle this function.
+
+    .. code-block::
+
+        # Start receiver thread
+        ReceiverThread = Thread(target=ReceiveData, args=(uart, args.binary))
+        ReceiverThread.start()
+
+        # …
+
+        # Shutdown receiver thread
+        ShutdownReceiver = True
+        if ReceiverThread.isAlive():
+            ReceiverThread.join()
+
+
+    Args:
+        uart: Instance of the *pyserial* ``Serial`` class.
+        binary (bool): Enable binary mode (``True``) or run in UTF-8 mode (``False``)
+
+    Returns:
+        *Nothing*
+    """
     data = ""
     while not ShutdownReceiver:
 
+        # Read all available data from the serial input buffer
         try:
             data = uart.read(uart.inWaiting())
         except:
             return
 
+        # Transcode the data depending on the configured behavior
         if data:
 
             if binary:
@@ -112,6 +157,10 @@ def ReceiveData(uart, binary=False):
 
 
 def ReadCommand():
+    """
+    Returns:
+        A command string
+    """
     char    = ""
     command = ""
 
@@ -132,12 +181,37 @@ def ReadCommand():
     sys.stdout.flush()
     return command
 
-def HandleUnbufferedUserInput():
+def HandleUnbufferedUserInput(uart):
+    """
+    This function handles the user input in *Unbuffered Mode*.
+    It reads the input from *stdin* byte by byte and sends it directly UTF-8 encoded to the UART device.
+
+    When the escape character gets entered, the function starts to record a command instead of sending
+    the data to the UART device.
+    The escape character is defined in the global variable ``ESCAPECHAR`` that can be set via the
+    command line parameter ``--escape``.
+    The default character is *escape* (``\e``).
+    Valid escape commands are ``exit`` to leave this function and exit ``sterm``,
+    or ``version`` to print the version number of ``sterm`` to *stdout*.
+    Enter the escape character twice send one escape character to the UART device.
+
+    When the TTY is set to unbuffered mode, it expects the sequence ``\r\n`` for line breaks.
+    This function takes care the ``\r\n`` sequences and ``\n``-only line breaks are handled correctly.
+
+    The function expects UTF-8 encoded input.
+
+    Args:
+        uart: Instance of the *pyserial* ``Serial`` class.
+
+    Returns:
+        *Nothing*
+    """
     char = ""
 
     while True:
         char = sys.stdin.read(1)
 
+        # Handle escape sequences
         if char == ESCAPECHAR:
             command = ReadCommand()
 
@@ -149,6 +223,8 @@ def HandleUnbufferedUserInput():
 
             elif command == "version":
                 print("Version: " + VERSION, end="\r\n")
+
+        # Send character to UART-Device
         else:
             # In this mode, \n needs to be added manually to get a new line
             if char == "\r":
@@ -156,18 +232,40 @@ def HandleUnbufferedUserInput():
             data = char.encode("utf-8")
             uart.write(data)
 
+    return
 
 
-def HandleBufferedUserInput():
+
+def HandleBufferedUserInput(uart):
+    r"""
+    This function handles the user input in *Bufferd Mode*.
+    It reads a complete line until the user hits the enter-key into a buffer.
+    Then the whole buffer gets send UTF-8 encoded to the UART device.
+
+    This function provides to escape commands.
+    The escape character is defined in the global variable ``ESCAPECHAR`` that can be set via the
+    command line parameter ``--escape``.
+    The default character is *escape* (``\e``).
+    When the line is ``"\033exit"`` this function gets left and ``sterm`` will shut down.
+    On ``"\033version"`` the version number gets printed to *stdout*.
+
+    The function expects UTF-8 encoded input.
+
+    Args:
+        uart: Instance of the *pyserial* ``Serial`` class.
+
+    Returns:
+        *Nothing*
+    """
     command = ""
 
     while True:
         command = input("")
 
-        if command == ".exit":
+        if command == ESCAPECHAR + "exit":
             break
 
-        elif command == ".version":
+        elif command == ESCAPECHAR + "version":
             print("Version: " + VERSION)
 
         else:
@@ -181,7 +279,7 @@ def HandleBufferedUserInput():
 if __name__ == '__main__':
     print("\n\033[1;31m --[ \033[1;34msterm \033[1;31m//\033[1;34m " + VERSION + "\033[1;31m ]-- \033[0m\n")
 
-    # handle command line arguments
+    # Handle command line arguments
     args       = cli.parse_args()
     DEVICE     = args.device
     BAUDRATE   = args.baudrate
@@ -189,7 +287,7 @@ if __name__ == '__main__':
     UNBUFFERED = args.unbuffered
     ESCAPECHAR = args.escape
 
-    # translate format-string
+    # Translate format-string
     try:
         BYTESIZE = BYTESIZEMAP[FORMAT[0]]
         PARITY   = PARITYMAP  [FORMAT[1]]
@@ -230,9 +328,9 @@ if __name__ == '__main__':
     # this is the main loop of this software
     try:
         if UNBUFFERED:
-            HandleUnbufferedUserInput();
+            HandleUnbufferedUserInput(uart);
         else:
-            HandleBufferedUserInput();
+            HandleBufferedUserInput(uart);
     except:
         # catch all to be able to clean up
         pass
