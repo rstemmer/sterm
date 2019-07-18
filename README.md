@@ -35,7 +35,7 @@ pip3 install pyserial
 ### Command Line Arguments
 
 ```bash
-sterm [-h] [--unbuffered] [--escape character] [--binary] [-b BAUDRATE] [-f FORMAT] DEVICE
+sterm [-h] [--unbuffered] [--escape character] [--binary] [-b BAUDRATE] [-f FORMAT] [-w logfile] DEVICE
 ```
 
   * __-h__: Print help.
@@ -44,6 +44,7 @@ sterm [-h] [--unbuffered] [--escape character] [--binary] [-b BAUDRATE] [-f FORM
   * __--binary__: Print hexadecimal values instead of Unicode characters. (Only applied on output, input will still be UTF-8)
   * __-b__: Baudrate. _Default:_ 115200 baud.
   * __-f__: Configuration-triple: xyz with x = bytelength in bits {5,6,7,8}; y = parity {N,E,O}; z = stopbits {1,2}. _Default:_ "8N1" - _8_ data bits, _no_ parity bits and _1_ stop bit.
+  * __-w__: Write received data into a file.
 
 _DEVICE_ is the path to the serial terminal.
 For example _/dev/ttyS0_, _/dev/ttyUSB0_, _/dev/ttyUART0_, _/dev/ttyACM0_, _/dev/pts/42_.
@@ -81,7 +82,7 @@ Connecting to a Linux device
 sterm --unbuffered --escape _ /dev/ttyUSB0
 ~# whoami
 root
-~# ^[exit
+~# _exit
 ```
 
 Communicating with two _sterm_ instances via a pseudo terminal for testing:

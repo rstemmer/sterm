@@ -1,4 +1,4 @@
-.TH STERM 1 "16 April 2019" "5.1.0" "sterm Manual"
+.TH STERM 1 "18 July 2019" "5.2.0" "sterm Manual"
 .SH NAME
 sterm \- a minimal serial terminal that focus on being easy to use. A client simply works.
 
@@ -57,6 +57,11 @@ Default: 115200 baud.
 Configuration-triple: xyz with x = byte length in bits {5,6,7,8}; y = parity {N,E,O}; z = stop bits {1,2}.
 .br
 Default: "8N1" - 8 data bits, no parity bits and 1 stop bit.
+.TP
+.BR \-w " " \fIlogfile\fB  ", " \-\-write " " \fIlogfile\fR
+Write received data into a log file. ANSI Escape sequences will also be written into the file.
+In binary mode (\fI--binary\fR) binary data gets written into the file.
+Otherwise the data is UTF-8 encoded.
 .TP
 .BR \fIdevice\fR
 .br

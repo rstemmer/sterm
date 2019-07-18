@@ -35,7 +35,7 @@ except:
 
 
 
-VERSION = "5.1.0"
+VERSION = "5.2.0"
 
 
 # This global variable is used to shutdown the thread used
@@ -58,6 +58,8 @@ cli.add_argument("-b", "--baudrate",    default=115200,     type=int, action="st
     help="The baudrate used for the communication.")
 cli.add_argument("-f", "--format",      default="8N1",      type=str, action="store",
     help="Configuration-triple: xyz with x=bytelength in bits {5,6,7,8}, y=parity {N,E,O}, z=stopbits {1,2}.")
+cli.add_argument("-w", "--write",       metavar="logfile",  type=str, action="store",
+    help="Write received data into a file")
 cli.add_argument("device",                                  type=str, action="store",
     help="Path to the serial communication device.")
 
@@ -80,7 +82,7 @@ UNBUFFERED = False      # Enable the unbuffered mode
 ESCAPECHAR = "\033"     # Escape character to start an escape command sequence
 
 
-def ReceiveData(uart, binary=False):
+def ReceiveData(uart, binary=False, logfile=None):
     """
     This function reads every 0.1 seconds all data from the serial input buffer.
     The read data then gets printed to the screen (stdout).
@@ -98,13 +100,18 @@ def ReceiveData(uart, binary=False):
     In *UTF-8 mode* the received data gets interpreted as UTF-8 encoded Unicode string.
     When an UnicodeDecodeError-Exception occurs, the raw data gets printed between ``[]``.
 
+    Is the ``logfile`` parameter a sting, then all received data gets written into that file.
+    In *binary mode* the data gets stored binary, otherwise it gets stored UTF-8 encoded.
+    Also ANSI-Escape-Sequences will be stored in the file.
+    The file gets opened in *append mode*. Old data will not be overwritten.
+
     This function is intended to run in a separate thread.
     The following example shows how to handle this function.
 
     .. code-block::
 
         # Start receiver thread
-        ReceiverThread = Thread(target=ReceiveData, args=(uart, args.binary))
+        ReceiverThread = Thread(target=ReceiveData, args=(uart, args.binary, "/tmp/log.dat"))
         ReceiverThread.start()
 
         # …
@@ -118,10 +125,26 @@ def ReceiveData(uart, binary=False):
     Args:
         uart: Instance of the *pyserial* ``Serial`` class.
         binary (bool): Enable binary mode (``True``) or run in UTF-8 mode (``False``)
+        logfile (str): Write received data into an utf-8 or binary log file, depending of ``binary`` parameter.
 
     Returns:
         *Nothing*
     """
+    if type(logfile) is str:
+        if binary:
+            filemode = "ab" # append to binary file
+        else:
+            filemode = "at" # append to text file
+
+        try:
+            log = open(logfile, filemode)
+        except Exception as e:
+            print("\033[1;31mOpening log file \033[1;37m%s\033[1;31m with mode \033[1;37m%s\033[1;31m failed with the following excpetion:\033[0m"%(logfile, filemode))
+            print(e)
+            return
+    else:
+        log = None
+
     data = ""
     while not ShutdownReceiver:
 
@@ -151,6 +174,11 @@ def ReceiveData(uart, binary=False):
 
             sys.stdout.write(string)
             sys.stdout.flush()
+            if log:
+                if binary:
+                    log.write(data)
+                else:
+                    log.write(string)
       
         time.sleep(0.1);
 
@@ -322,7 +350,7 @@ if __name__ == '__main__':
         tty.setraw(stdinfd) # from now on, end-line must be "\r\n"
     
     # Start receiver thread
-    ReceiverThread = Thread(target=ReceiveData, args=(uart,args.binary))
+    ReceiverThread = Thread(target=ReceiveData, args=(uart,args.binary, args.write))
     ReceiverThread.start()
 
     # this is the main loop of this software
