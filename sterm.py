@@ -35,7 +35,7 @@ except:
 
 
 
-VERSION = "5.2.0"
+VERSION = "6.0.0-indev"
 
 
 # This global variable is used to shutdown the thread used
