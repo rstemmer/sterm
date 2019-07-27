@@ -233,7 +233,7 @@ def HandleBufferedUserInput(uart, term):
 
 
 
-if __name__ == '__main__':
+def main():
     print("\n\033[1;31m --[ \033[1;34msterm \033[1;31m//\033[1;34m " + VERSION + "\033[1;31m ]-- \033[0m\n")
 
     # Handle command line arguments
@@ -268,6 +268,7 @@ if __name__ == '__main__':
         pass
 
     # Shutdown receiver thread
+    global ShutdownReceiver
     ShutdownReceiver = True
     if ReceiverThread.isAlive():
         ReceiverThread.join()
@@ -276,6 +277,8 @@ if __name__ == '__main__':
     uart.Disconnect()
 
 
+if __name__ == '__main__':
+    main()
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
 
