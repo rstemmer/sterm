@@ -24,7 +24,8 @@ import termios
 import time
 import argparse
 from threading import Thread
-from uart import UART, UARTMode
+from uart       import UART, UARTMode
+from terminal   import Terminal
 
 
 
@@ -60,7 +61,7 @@ UNBUFFERED = False      # Enable the unbuffered mode
 ESCAPECHAR = "\033"     # Escape character to start an escape command sequence
 
 
-def ReceiveData(uart):
+def ReceiveData(uart, term):
     """
     This function reads every 0.1 seconds all data from the serial input buffer.
     The read data then gets printed to the screen (stdout).
@@ -111,22 +112,12 @@ def ReceiveData(uart):
     while not ShutdownReceiver:
 
         string = uart.Receive()
-
-        if string:
-            if UNBUFFERED:
-                # In the unbuffered input mode, the output also expects an explicit \r
-                # This is because of the changed, none-default settings of the TTY
-                # Here I take care that the \r\n sequence is correct
-                string = string.replace("\n", "\r\n").replace("\r\r", "\r")
-
-            sys.stdout.write(string)
-            sys.stdout.flush()
-
+        term.Write(string)
         time.sleep(0.1)
 
 
 
-def ReadCommand():
+def ReadCommand(term):
     """
     Returns:
         A command string
@@ -135,7 +126,7 @@ def ReadCommand():
     command = ""
 
     while True:
-        char = sys.stdin.read(1)
+        char = term.ReadCharacter()
         if char == "\r":
             break
         elif char == ESCAPECHAR:
@@ -143,15 +134,13 @@ def ReadCommand():
                 command = ESCAPECHAR
             break
         else:
-            sys.stdout.write(char)
-            sys.stdout.flush()
+            term.Write(char)
             command += char
 
-    sys.stdout.write("\r\n")
-    sys.stdout.flush()
+    term.Write("\n")
     return command
 
-def HandleUnbufferedUserInput(uart):
+def HandleUnbufferedUserInput(uart, term):
     """
     This function handles the user input in *Unbuffered Mode*.
     It reads the input from *stdin* byte by byte and sends it directly UTF-8 encoded to the UART device.
@@ -179,11 +168,11 @@ def HandleUnbufferedUserInput(uart):
     char = ""
 
     while True:
-        char = sys.stdin.read(1)
+        char = term.ReadCharacter()
 
         # Handle escape sequences
         if char == ESCAPECHAR:
-            command = ReadCommand()
+            command = ReadCommand(term)
 
             if command == ESCAPECHAR:
                 uart.write(ESCAPECHAR.encode("utf-8"))
@@ -205,7 +194,7 @@ def HandleUnbufferedUserInput(uart):
 
 
 
-def HandleBufferedUserInput(uart):
+def HandleBufferedUserInput(uart, term):
     r"""
     This function handles the user input in *Bufferd Mode*.
     It reads a complete line until the user hits the enter-key into a buffer.
@@ -229,7 +218,7 @@ def HandleBufferedUserInput(uart):
     command = ""
 
     while True:
-        command = input("")
+        command = term.ReadLine()
 
         if command == ESCAPECHAR + "exit":
             break
@@ -262,23 +251,18 @@ if __name__ == '__main__':
 
     # Open remote terminal device
     uart = UART(args.device, args.baudrate, args.format, uartmode=UARTMODE, logpath=args.write)
+    term = Terminal(buffered= not args.unbuffered, escape=args.escape)
 
-    # Setup local terminal
-    if UNBUFFERED:
-        stdinfd          = sys.stdin.fileno()
-        oldstdinsettings = termios.tcgetattr(stdinfd)
-        tty.setraw(stdinfd) # from now on, end-line must be "\r\n"
-    
     # Start receiver thread
-    ReceiverThread = Thread(target=ReceiveData, args=(uart,))
+    ReceiverThread = Thread(target=ReceiveData, args=(uart, term))
     ReceiverThread.start()
 
     # this is the main loop of this software
     try:
         if UNBUFFERED:
-            HandleUnbufferedUserInput(uart);
+            HandleUnbufferedUserInput(uart, term);
         else:
-            HandleBufferedUserInput(uart);
+            HandleBufferedUserInput(uart, term);
     except:
         # catch all to be able to clean up
         pass
@@ -289,8 +273,6 @@ if __name__ == '__main__':
         ReceiverThread.join()
 
     # Clean up everything
-    if UNBUFFERED:
-        termios.tcsetattr(stdinfd, termios.TCSADRAIN, oldstdinsettings)
     uart.Disconnect()
 
 
