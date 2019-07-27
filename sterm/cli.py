@@ -23,13 +23,13 @@ import tty
 import termios
 import time
 import argparse
-from threading import Thread
-from uart       import UART, UARTMode
-from terminal   import Terminal
+from threading      import Thread
+from sterm.uart     import UART, UARTMode
+from sterm.terminal import Terminal
 
 
 
-VERSION = "6.0.0-indev"
+VERSION = "6.0.0a5"
 
 
 # This global variable is used to shutdown the thread used

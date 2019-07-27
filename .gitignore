@@ -1,4 +1,7 @@
 __pycache__
+dist
+build
+sterm.egg-info
 *~
 *.bin
 updatetest.py
