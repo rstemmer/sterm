@@ -9,7 +9,7 @@ setuptools.setup(
         version         = "6.0.0a5",
         author          = "Ralf Stemmer",
         author_email    = "ralf.stemmer@gmx.net",
-        description     = "A minimal serial / UART terminal that focus on being easy to use.",
+        description     = "A minimal serial / UART command line terminal that focus on being easy to use.",
         long_description= long_description,
         long_description_content_type   = "text/markdown",
         url             = "https://github.com/rstemmer/sterm",
