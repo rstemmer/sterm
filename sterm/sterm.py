@@ -23,15 +23,8 @@ import tty
 import termios
 import time
 import argparse
-import binascii
 from threading import Thread
-
-try:
-    from serial import *
-except:
-    print("\033[1;31mModule \033[1;37mpyserial \033[1;31mmissing!")
-    print("\033[1;34m Try \033[1;36mpip\033[1;30m3\033[1;36m install pyserial\033[1;34m as root to install it.\033[1;30m")
-    exit(1)
+from uart import UART, UARTMode
 
 
 
@@ -63,26 +56,11 @@ cli.add_argument("-w", "--write",       metavar="logfile",  type=str, action="st
 cli.add_argument("device",                                  type=str, action="store",
     help="Path to the serial communication device.")
 
-# Mapping the format-string (--format) to the pyserial-parameters.
-# This is just a subset of possible parameters. See pyserial-docs to extend these maps.
-BYTESIZEMAP = {}
-BYTESIZEMAP["5"] = FIVEBITS
-BYTESIZEMAP["6"] = SIXBITS
-BYTESIZEMAP["7"] = SEVENBITS
-BYTESIZEMAP["8"] = EIGHTBITS
-PARITYMAP = {}
-PARITYMAP["N"] = PARITY_NONE
-PARITYMAP["E"] = PARITY_EVEN
-PARITYMAP["O"] = PARITY_ODD
-STOPBITMAP = {}
-STOPBITMAP["1"] = STOPBITS_ONE
-STOPBITMAP["2"] = STOPBITS_TWO
-
 UNBUFFERED = False      # Enable the unbuffered mode
 ESCAPECHAR = "\033"     # Escape character to start an escape command sequence
 
 
-def ReceiveData(uart, binary=False, logfile=None):
+def ReceiveData(uart):
     """
     This function reads every 0.1 seconds all data from the serial input buffer.
     The read data then gets printed to the screen (stdout).
@@ -111,7 +89,7 @@ def ReceiveData(uart, binary=False, logfile=None):
     .. code-block::
 
         # Start receiver thread
-        ReceiverThread = Thread(target=ReceiveData, args=(uart, args.binary, "/tmp/log.dat"))
+        ReceiverThread = Thread(target=ReceiveData, args=(uart, ))
         ReceiverThread.start()
 
         # …
@@ -124,48 +102,17 @@ def ReceiveData(uart, binary=False, logfile=None):
 
     Args:
         uart: Instance of the *pyserial* ``Serial`` class.
-        binary (bool): Enable binary mode (``True``) or run in UTF-8 mode (``False``)
-        logfile (str): Write received data into an utf-8 or binary log file, depending of ``binary`` parameter.
 
     Returns:
         *Nothing*
     """
-    if type(logfile) is str:
-        if binary:
-            filemode = "ab" # append to binary file
-        else:
-            filemode = "at" # append to text file
-
-        try:
-            log = open(logfile, filemode)
-        except Exception as e:
-            print("\033[1;31mOpening log file \033[1;37m%s\033[1;31m with mode \033[1;37m%s\033[1;31m failed with the following excpetion:\033[0m"%(logfile, filemode))
-            print(e)
-            return
-    else:
-        log = None
 
     data = ""
     while not ShutdownReceiver:
 
-        # Read all available data from the serial input buffer
-        try:
-            data = uart.read(uart.inWaiting())
-        except:
-            return
+        string = uart.Receive()
 
-        # Transcode the data depending on the configured behavior
-        if data:
-
-            if binary:
-                string = binascii.hexlify(data).decode("utf-8")
-                string = " ".join(["0x"+string[i:i+2] for i in range(0, len(string), 2)]) + " "
-            else:
-                try:
-                    string = data.decode("utf-8")
-                except UnicodeDecodeError:
-                    string = "[" + str(data) + "]"
-
+        if string:
             if UNBUFFERED:
                 # In the unbuffered input mode, the output also expects an explicit \r
                 # This is because of the changed, none-default settings of the TTY
@@ -174,13 +121,8 @@ def ReceiveData(uart, binary=False, logfile=None):
 
             sys.stdout.write(string)
             sys.stdout.flush()
-            if log:
-                if binary:
-                    log.write(data)
-                else:
-                    log.write(string)
-      
-        time.sleep(0.1);
+
+        time.sleep(0.1)
 
 
 
@@ -257,8 +199,7 @@ def HandleUnbufferedUserInput(uart):
             # In this mode, \n needs to be added manually to get a new line
             if char == "\r":
                 char += "\n"
-            data = char.encode("utf-8")
-            uart.write(data)
+            uart.Transmit(char)
 
     return
 
@@ -298,8 +239,7 @@ def HandleBufferedUserInput(uart):
 
         else:
             command += "\n"
-            data = command.encode("utf-8")
-            uart.write(data)
+            uart.Transmit(command)
     return
 
 
@@ -315,33 +255,13 @@ if __name__ == '__main__':
     UNBUFFERED = args.unbuffered
     ESCAPECHAR = args.escape
 
-    # Translate format-string
-    try:
-        BYTESIZE = BYTESIZEMAP[FORMAT[0]]
-        PARITY   = PARITYMAP  [FORMAT[1]]
-        STOPBITS = STOPBITMAP [FORMAT[2]]
-    except Exception as e:
-        print("\033[1;31mFormat \033[1;37m" + FORMAT + " \033[1;31minvalid!\033[0m")
-        print("Use --help as argument to display the help including the format-description.")
-        exit(1)
+    if args.binary:
+        UARTMODE = UARTMode.BINARY
+    else:
+        UARTMODE = UARTMode.TEXT
 
     # Open remote terminal device
-    try:
-        uart = Serial(
-            port    = DEVICE,
-            baudrate= BAUDRATE,
-            bytesize= BYTESIZE,
-            parity  = PARITY,
-            stopbits= STOPBITS,
-            timeout = 0.1,
-            xonxoff = 0,
-            rtscts  = 0,
-            interCharTimeout=None
-        )
-    except Exception as e:
-        print("\033[1;31mAccessing \033[1;37m" + DEVICE + " \033[1;31mfailed with the following excpetion:\033[0m")
-        print(e)
-        exit(1)
+    uart = UART(args.device, args.baudrate, args.format, uartmode=UARTMODE, logpath=args.write)
 
     # Setup local terminal
     if UNBUFFERED:
@@ -350,7 +270,7 @@ if __name__ == '__main__':
         tty.setraw(stdinfd) # from now on, end-line must be "\r\n"
     
     # Start receiver thread
-    ReceiverThread = Thread(target=ReceiveData, args=(uart,args.binary, args.write))
+    ReceiverThread = Thread(target=ReceiveData, args=(uart,))
     ReceiverThread.start()
 
     # this is the main loop of this software
@@ -371,7 +291,7 @@ if __name__ == '__main__':
     # Clean up everything
     if UNBUFFERED:
         termios.tcsetattr(stdinfd, termios.TCSADRAIN, oldstdinsettings)
-    uart.close()
+    uart.Disconnect()
 
 
 
