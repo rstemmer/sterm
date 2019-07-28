@@ -4,9 +4,11 @@ import setuptools
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
+from sterm.cli import VERSION
+
 setuptools.setup(
         name            = "sterm",
-        version         = "6.0.0a5",
+        version         = VERSION,
         author          = "Ralf Stemmer",
         author_email    = "ralf.stemmer@gmx.net",
         description     = "A minimal serial / UART command line terminal that focus on being easy to use.",
