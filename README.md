@@ -28,9 +28,6 @@ pip install sterm
 
 ### From Repository
 
-You should check the `install.sh` script before executing.
-The default installation path is _/usr/local/bin_
-
 ```bash
 # Download
 git clone https://github.com/rstemmer/sterm.git

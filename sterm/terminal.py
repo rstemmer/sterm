@@ -1,4 +1,4 @@
-# STERM, a serial communication terminal with server capabilities        #
+# STERM, a serial communication terminal                                 #
 # Copyright (C) 2013-2019  Ralf Stemmer (ralf.stemmer@gmx.net)           #
 #                                                                        #
 # This program is free software: you can redistribute it and/or modify   #
@@ -19,19 +19,37 @@ import tty
 import termios
 
 
-# TODO: In unbuffered mode, the input gets not echoed - this in intentional but implicit.
-#       An option to change this behavior would be nice
-
 class Terminal(object):
-    """
-    This class handles the Terminal setup and access for seamless read/write access to remote shells.
+    r"""
+    This class handles the Terminal setup for seamless read/write access to remote shells.
 
     This class switches the terminal into *raw mode*!
+    In raw mode, the enter key is represented by ``"\r"`` and new-line by ``"\r\n"``.
+    This class takes care of this situation.
 
     When ``echo`` is ``True``, then all entered character will be printed to *stdout*.
     Otherwise entering a character will be invisible when not echoed by the connected device.
+    When the ``escape`` character is entered, ``"␛"`` gets printed to *stdout*.
+
+    The default terminal configuration gets restored when the instance of this class gets deleted.
+
+    Args:
+        echo (bool): Enable or disable printing the character that got pressed by the user on the keyboard. Default is ``True``
+        escape (str): A special character used for escape sequences. Default is ``"\033"``
+
+    Raises:
+        TypeError: When echo is not of type ``bool`` and escape not of type ``str``.
+        ValueError: When escape has more than one character.
     """
     def __init__(self, *, echo=True, escape="\033"):
+        if type(echo) is not bool:
+            raise TypeError("Type of echo-argument must be bool!")
+
+        if type(escape) is not str:
+            raise TypeError("Type of escape-argument must be string!")
+        if len(escape) != 1:
+            raise ValueError("Escape-argument should only contain one single character!")
+
         self.echo   = echo
         self.escape = escape
 
@@ -51,6 +69,9 @@ class Terminal(object):
         r"""
         This method reads a whole line and returns it.
         The end-of-line character (``\n``, ``\r``, ``\r\n``) are not included.
+
+        Returns:
+            A string the user entered until the return key got hit. The line-break is not included in the returned string.
         """
         string = ""
 
@@ -66,12 +87,17 @@ class Terminal(object):
         return string
 
 
+
     def ReadCharacter(self):
         r"""
         This method returns one single character of the users input.
-        In raw (``echo = False``) mode, enter only produces an \r, not an \n
+
+        Keep in mind that in raw mode, enter only produces an \r, not an \n
 
         If echo mode is enabled, the entered character gets printed to *stdout*.
+
+        Returns:
+            One singe character of type ``str``.
         """
         char = sys.stdin.read(1)
         if self.echo:
@@ -90,8 +116,17 @@ class Terminal(object):
         In raw mode line ending must be ``\r\n``.
         When an input of an enter (only ``\r``) shall be echoed, an additional ``\n`` needs to be written.
 
-        This method takes care that there is always ``\r\n``, independent if only ``\r`` or ``\n`` is used as line break.
+        This method takes care that there is always ``\r\n``, independent if only ``\r`` or ``\n`` is used as line break in the ``string`` argument.
+
+        Returns:
+            *Nothing*
+
+        Raises:
+            TypeError: When ``type(string) is not str``. The argument to this method must always be a string.
         """
+        if type(string) is not str:
+            raise TypeError("Argument for Terminal.Write must be a string! Actual type was %s.", str(type(string)))
+
         # In the raw input mode (no echo), the output also expects an explicit \r
         # This is because of the changed, none-default settings of the TTY
         # Here I take care that the \r\n sequence is correct

@@ -1,7 +1,4 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-# STERM, a serial communication terminal with server capabilities        #
+# STERM, a serial communication terminal                                 #
 # Copyright (C) 2013-2019  Ralf Stemmer (ralf.stemmer@gmx.net)           #
 #                                                                        #
 # This program is free software: you can redistribute it and/or modify   #
@@ -18,21 +15,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.  #
 
 import sys
-#import os
-#import tty
-#import termios
-#import time
-#import argparse
-#from threading import Thread
 import binascii
 from enum import Enum
+from serial import *
 
-try:
-    from serial import *
-except:
-    print("\033[1;31mModule \033[1;37mpyserial \033[1;31mmissing!")
-    print("\033[1;34m Try \033[1;36mpip\033[1;30m3\033[1;36m install pyserial\033[1;34m as root to install it.\033[1;30m")
-    exit(1)
+
 
 class UARTMode(Enum):
     BINARY  = 1
@@ -57,7 +44,7 @@ STOPBITMAP["2"] = STOPBITS_TWO
 # Automatic disconnect
 # Support with-environment
 # TODO: support path-type for devpath and logpath
-# TODO: logfile currently only stores received information
+# TODO: logfile currently only stores received information, not entered data
 
 # TODO: Improve documentation:
 #  - Describe format string (dataformat)
@@ -69,12 +56,18 @@ class UART(object):
 
     When creating an object, the connection gets automatically established.
 
+    Whenever an exception occurs, it gets passed through.
+    This class does not do any output to *stdout* or *stderr*.
+
     Args:
         devpath (str): Path to the UART device (like ``"/dev/ttyUSB0"``)
         baudrate (int): Baud rate used for the data transfer
         dataformat (str): The three-letter format string of defining the type of data. (like ``"8N1"``)
         uartmode (UARTMode): Definition if the methods work in *binary mode* or *text mode* (UTF-8)
         logpath (str): Write all received data into the given log file
+
+    Raises:
+        ValueError: When the format string is not following the specified scheme
     """
     def __init__(self, devpath, baudrate, dataformat, *, uartmode=UARTMode.TEXT, logpath=None):
         self.devpath    = devpath
@@ -92,11 +85,7 @@ class UART(object):
             self.parity   = PARITYMAP  [dataformat[1]]
             self.stopbits = STOPBITMAP [dataformat[2]]
         except KeyError as e:
-            # TODO: Error to stderr!
-            print("\033[1;31mFormat \033[1;37m" + dataformat + " \033[1;31minvalid!\033[0m", file=sys.stderr)
-            print("Use --help as argument to display the help including the format-description.", file=sys.stderr)
-            raise e
-
+            raise ValueError("dataformat argument (\"%s\") invalid! See documentation for valid formats.", dataformat)
         self.__Connect()
 
 
@@ -105,7 +94,7 @@ class UART(object):
         """
         This method opens a connection to a UART device.
 
-        If a logging is enabled, the log files gets opened as well.
+        If logging is enabled, the log files gets opened as well.
         In *binary mode* the files gets opened to append binary data (``"ab"``), otherwise
         it is opened to append text data (``"at"``).
 
@@ -114,25 +103,22 @@ class UART(object):
 
         Returns:
             *Nothing*
+
+        Raises:
+            SerialException: In case the device can not be found or can not be configured.
+            ValueError: When the UART configuration is out of valid range
+            IOError: In case there is some trouble opening the log file
         """
         # Open remote terminal device
-        try:
-            self.uart = Serial(
-                port    = self.devpath,
-                baudrate= self.baudrate,
-                bytesize= self.bytesize,
-                parity  = self.parity,
-                stopbits= self.stopbits,
-                timeout = 0.1,
-                xonxoff = 0,
-                rtscts  = 0,
-                interCharTimeout=None
-            )
-        except Exception as e:
-            print("\033[1;31mAccessing \033[1;37m%s\033[1;31mfailed with the following excpetion: \033[1;37m%s\033[0m"
-                    %(self.devpath, str(e)),
-                    file=sys.stderr)
-            raise e
+        self.uart = Serial(
+            port    = self.devpath,
+            baudrate= self.baudrate,
+            bytesize= self.bytesize,
+            parity  = self.parity,
+            stopbits= self.stopbits,
+            timeout = 0.1,
+            interCharTimeout=None
+        )
 
         # open log file
         if type(self.logpath) is str:
@@ -141,13 +127,7 @@ class UART(object):
             else:
                 filemode = "at" # append to text file
 
-            try:
-                self.logfile = open(self.logpath, filemode)
-            except Exception as e:
-                print("\033[1;31mOpening log file \033[1;37m%s\033[1;31m with mode \033[1;37m%s\033[1;31m failed with the following exception:\033[1;37m%s\033[0m"
-                        %(self.logpath, filemode, str(e)),
-                        file=sys.stderr)
-                raise e
+            self.logfile = open(self.logpath, filemode)
         return
 
 
@@ -189,12 +169,15 @@ class UART(object):
         The file gets opened in *append mode*. Old data will not be overwritten.
 
         Returns:
-            A string of received data
+            A string of received data or ``None`` when no data is available.
+
+        Raises:
+            ValueError: When UARTMode is not supported / invalid
         """
 
         # Read all available data from the serial input buffer
         try:
-            data = self.uart.read(self.uart.inWaiting())
+            data = self.uart.read(self.uart.in_waiting)
         except:
             return None
 
@@ -210,8 +193,7 @@ class UART(object):
             string = " ".join(["0x"+string[i:i+2] for i in range(0, len(string), 2)]) + " "
 
         else:
-            # TODO: unknown uart mode
-            pass
+            raise ValueError("Unknown/Unsupported UARMode!")
 
 
         if self.logfile:
@@ -239,13 +221,7 @@ class UART(object):
             UnicodeError: When ``str.encode("utf-8")`` fails encoding the string (only if ``type(string) == str``)
         """
         if type(string) is str:
-            try:
-                data = string.encode("utf-8")
-            except UnicodeError as e:
-                print("\033[1;31mEncoding \"\033[1;37m%s\033[1;31m\" as utf-8 byte stream failed!\033[0m"
-                        %(string),
-                        file=sys.stderr)
-                raise e
+            data = string.encode("utf-8")
 
         elif type(string) is bytes:
             data = string

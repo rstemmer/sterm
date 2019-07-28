@@ -62,26 +62,12 @@ ESCAPECHAR  = "\033"     # Escape character to start an escape command sequence
 
 def ReceiveData(uart, term):
     """
-    This function reads every 0.1 seconds all data from the serial input buffer.
+    This function reads every 0.01 seconds all data from the serial input buffer.
     The read data then gets printed to the screen (stdout).
     After writing to the output buffer, the buffer gets flushed so that the data is visible to the user
     as soon as possible.
     The function is blocking and runs until the global variable ``ShutdownReveiver`` get set to ``False``
     or when reading from the input buffer raises an exception.
-
-    The behavior of this function depends on the ``binary`` argument:
-
-    In *binary mode* the received bytes get encoded as one byte hexadecimal numbers with ``0x`` prefix,
-    space separated and a space at the end of the byte stream.
-    So when receiving the two bytes ``23``, ``42`` the output is ``0x23 0x42 ``.
-
-    In *UTF-8 mode* the received data gets interpreted as UTF-8 encoded Unicode string.
-    When an UnicodeDecodeError-Exception occurs, the raw data gets printed between ``[]``.
-
-    Is the ``logfile`` parameter a sting, then all received data gets written into that file.
-    In *binary mode* the data gets stored binary, otherwise it gets stored UTF-8 encoded.
-    Also ANSI-Escape-Sequences will be stored in the file.
-    The file gets opened in *append mode*. Old data will not be overwritten.
 
     This function is intended to run in a separate thread.
     The following example shows how to handle this function.
@@ -89,7 +75,7 @@ def ReceiveData(uart, term):
     .. code-block::
 
         # Start receiver thread
-        ReceiverThread = Thread(target=ReceiveData, args=(uart, ))
+        ReceiverThread = Thread(target=ReceiveData, args=(uart, term))
         ReceiverThread.start()
 
         # …
@@ -101,7 +87,9 @@ def ReceiveData(uart, term):
 
 
     Args:
-        uart: Instance of the *pyserial* ``Serial`` class.
+        uart: Instance of the ``UART`` class.
+        term: Instance of the ``Terminal`` class.
+
 
     Returns:
         *Nothing*
@@ -111,8 +99,9 @@ def ReceiveData(uart, term):
     while not ShutdownReceiver:
 
         string = uart.Receive()
-        term.Write(string)
-        time.sleep(0.1)
+        if string:
+            term.Write(string)
+        time.sleep(0.01)
 
 
 
@@ -146,9 +135,11 @@ def ReadCommand(term):
         term.Write("\n")
     return command
 
-def HandleUnbufferedUserInput(uart, term):
-    """
-    This function handles the user input in *Unbuffered Mode*.
+
+
+def HandleUserInput(uart, term):
+    r"""
+    This function handles the user input.
     It reads the input from *stdin* byte by byte and sends it directly UTF-8 encoded to the UART device.
 
     When the escape character gets entered, the function starts to record a command instead of sending
@@ -160,13 +151,14 @@ def HandleUnbufferedUserInput(uart, term):
     or ``version`` to print the version number of ``sterm`` to *stdout*.
     Enter the escape character twice send one escape character to the UART device.
 
-    When the TTY is set to unbuffered mode, it expects the sequence ``\r\n`` for line breaks.
-    This function takes care the ``\r\n`` sequences and ``\n``-only line breaks are handled correctly.
+    This function takes care the ``"\r\n"`` sequences and ``"\n"``-only line breaks are handled correctly.
+    Currently, it always send ``"\r\n"``
 
     The function expects UTF-8 encoded input.
 
     Args:
-        uart: Instance of the *pyserial* ``Serial`` class.
+        uart: Instance of the ``UART`` class.
+        term: Instance of the ``Terminal`` class.
 
     Returns:
         *Nothing*
@@ -205,20 +197,16 @@ def main():
 
     # Handle command line arguments
     args       = cli.parse_args()
-    DEVICE     = args.device
-    BAUDRATE   = args.baudrate
-    FORMAT     = args.format
     global ESCAPECHAR
     ESCAPECHAR = args.escape
 
-
     if args.binary:
-        UARTMODE = UARTMode.BINARY
+        uartmode = UARTMode.BINARY
     else:
-        UARTMODE = UARTMode.TEXT
+        uartmode = UARTMode.TEXT
 
     # Open remote terminal device
-    uart = UART(args.device, args.baudrate, args.format, uartmode=UARTMODE, logpath=args.write)
+    uart = UART(args.device, args.baudrate, args.format, uartmode=uartmode, logpath=args.write)
     term = Terminal(echo= not args.noecho, escape=args.escape)
 
     # Start receiver thread
@@ -227,10 +215,9 @@ def main():
 
     # this is the main loop of this software
     try:
-        HandleUnbufferedUserInput(uart, term);
-    except:
-        # catch all to be able to clean up
-        pass
+        HandleUserInput(uart, term);
+    except Exception as e:
+        print(e)
 
     # Shutdown receiver thread
     global ShutdownReceiver
