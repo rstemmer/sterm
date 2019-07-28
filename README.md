@@ -17,6 +17,17 @@ This makes the Linux console usage seamlessly like using telnet or ssh.
 
 ## Installation
 
+There are two ways to install _sterm_.
+Directly using `pip` or from the cloned repository.
+
+### Using pip
+
+```bash
+pip install sterm
+```
+
+### From Repository
+
 You should check the `install.sh` script before executing.
 The default installation path is _/usr/local/bin_
 
@@ -25,11 +36,12 @@ The default installation path is _/usr/local/bin_
 git clone https://github.com/rstemmer/sterm.git
 cd sterm
 
-# Install
-sudo ./install.sh
-
 # Dependencies
-pip3 install pyserial
+pip install pyserial
+
+# Install Package
+pip install .
+
 ```
 
 ## Usage
