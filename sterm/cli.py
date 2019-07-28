@@ -44,8 +44,8 @@ cli = argparse.ArgumentParser(
 
 cli.add_argument(      "--binary",      default=False,                action="store_true",
     help="Display raw data instead of UTF-8 encoded. (read only)")
-cli.add_argument("-u", "--unbuffered",  default=False,                action="store_true",
-    help="Direct character transmission. Does not buffer a whole line for the user input.")
+cli.add_argument("-n", "--noecho",      default=False,                action="store_true",
+    help="Direct character transmission. Does not echo the user input to stdout.")
 cli.add_argument(      "--escape",      default="\033",     type=str, action="store",
     help="Change the default escape character (escape)")
 cli.add_argument("-b", "--baudrate",    default=115200,     type=int, action="store",
@@ -57,8 +57,7 @@ cli.add_argument("-w", "--write",       metavar="logfile",  type=str, action="st
 cli.add_argument("device",                                  type=str, action="store",
     help="Path to the serial communication device.")
 
-UNBUFFERED = False      # Enable the unbuffered mode
-ESCAPECHAR = "\033"     # Escape character to start an escape command sequence
+ESCAPECHAR  = "\033"     # Escape character to start an escape command sequence
 
 
 def ReceiveData(uart, term):
@@ -119,11 +118,16 @@ def ReceiveData(uart, term):
 
 def ReadCommand(term):
     """
+    This function reads an escape sequence.
+    In case the terminal mode is ``echo = False``, this function echos all typed characters for this sequence.
+
     Returns:
         A command string
     """
     char    = ""
     command = ""
+    if not term.echo:
+        term.Write("␛") # Print ESC Unicode character then user hits escape key
 
     while True:
         char = term.ReadCharacter()
@@ -134,10 +138,12 @@ def ReadCommand(term):
                 command = ESCAPECHAR
             break
         else:
-            term.Write(char)
+            if not term.echo:
+                term.Write(char)
             command += char
 
-    term.Write("\n")
+    if not term.echo:
+        term.Write("\n")
     return command
 
 def HandleUnbufferedUserInput(uart, term):
@@ -175,7 +181,7 @@ def HandleUnbufferedUserInput(uart, term):
             command = ReadCommand(term)
 
             if command == ESCAPECHAR:
-                uart.write(ESCAPECHAR.encode("utf-8"))
+                uart.Transmit(ESCAPECHAR.encode("utf-8"))
 
             if command == "exit":
                 break
@@ -194,45 +200,6 @@ def HandleUnbufferedUserInput(uart, term):
 
 
 
-def HandleBufferedUserInput(uart, term):
-    r"""
-    This function handles the user input in *Bufferd Mode*.
-    It reads a complete line until the user hits the enter-key into a buffer.
-    Then the whole buffer gets send UTF-8 encoded to the UART device.
-
-    This function provides to escape commands.
-    The escape character is defined in the global variable ``ESCAPECHAR`` that can be set via the
-    command line parameter ``--escape``.
-    The default character is *escape* (``\e``).
-    When the line is ``"\033exit"`` this function gets left and ``sterm`` will shut down.
-    On ``"\033version"`` the version number gets printed to *stdout*.
-
-    The function expects UTF-8 encoded input.
-
-    Args:
-        uart: Instance of the *pyserial* ``Serial`` class.
-
-    Returns:
-        *Nothing*
-    """
-    command = ""
-
-    while True:
-        command = term.ReadLine()
-
-        if command == ESCAPECHAR + "exit":
-            break
-
-        elif command == ESCAPECHAR + "version":
-            print("Version: " + VERSION)
-
-        else:
-            command += "\n"
-            uart.Transmit(command)
-    return
-
-
-
 def main():
     print("\n\033[1;31m --[ \033[1;34msterm \033[1;31m//\033[1;34m " + VERSION + "\033[1;31m ]-- \033[0m\n")
 
@@ -241,8 +208,9 @@ def main():
     DEVICE     = args.device
     BAUDRATE   = args.baudrate
     FORMAT     = args.format
-    UNBUFFERED = args.unbuffered
+    global ESCAPECHAR
     ESCAPECHAR = args.escape
+
 
     if args.binary:
         UARTMODE = UARTMode.BINARY
@@ -251,7 +219,7 @@ def main():
 
     # Open remote terminal device
     uart = UART(args.device, args.baudrate, args.format, uartmode=UARTMODE, logpath=args.write)
-    term = Terminal(buffered= not args.unbuffered, escape=args.escape)
+    term = Terminal(echo= not args.noecho, escape=args.escape)
 
     # Start receiver thread
     ReceiverThread = Thread(target=ReceiveData, args=(uart, term))
@@ -259,10 +227,7 @@ def main():
 
     # this is the main loop of this software
     try:
-        if UNBUFFERED:
-            HandleUnbufferedUserInput(uart, term);
-        else:
-            HandleBufferedUserInput(uart, term);
+        HandleUnbufferedUserInput(uart, term);
     except:
         # catch all to be able to clean up
         pass

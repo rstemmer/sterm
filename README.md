@@ -3,13 +3,15 @@
 
 sterm is a minimal serial terminal that focus on being easy to use and not sucking. - This client simply works.
 It has inline input and supports Unicode (utf-8).
+Each character typed gets directly send to the connected device without buffering.
 It writes whatever it receives to *stdout* so that also ANSI escape sequences work as expected.
 
 *Ideal for debugging:*
 With the ``--binary`` option, the received data will be output byte wise as hexadecimal numbers.
 
 *Ideal for a remote Linux shell:*
-With the ``--unbuffered`` option, each character typed gets directly send to the connected device without buffering and echoing.
+With the ``--noecho`` option, each character typed gets directly send to the connected device without buffering and echoing.
+This makes the Linux console usage seamlessly like using telnet or ssh.
 
 **Project State:** Alive and maintained
 
@@ -35,11 +37,11 @@ pip3 install pyserial
 ### Command Line Arguments
 
 ```bash
-sterm [-h] [--unbuffered] [--escape character] [--binary] [-b BAUDRATE] [-f FORMAT] [-w logfile] DEVICE
+sterm [-h] [--noecho] [--escape character] [--binary] [-b BAUDRATE] [-f FORMAT] [-w logfile] DEVICE
 ```
 
   * __-h__: Print help.
-  * __-u__: Enable unbuffered mode
+  * __-n__: Enable _noecho_ mode. _Default_ is echoing each entered key to _stdout_.
   * __--escape__: Define an alternative escape character. _Default_ is escape ("\e").
   * __--binary__: Print hexadecimal values instead of Unicode characters. (Only applied on output, input will still be UTF-8)
   * __-b__: Baudrate. _Default:_ 115200 baud.
@@ -79,7 +81,7 @@ world
 
 Connecting to a Linux device
 ```
-sterm --unbuffered --escape _ /dev/ttyUSB0
+sterm --noecho --escape _ /dev/ttyUSB0
 ~# whoami
 root
 ~# _exit

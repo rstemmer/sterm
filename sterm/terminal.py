@@ -25,22 +25,25 @@ import termios
 class Terminal(object):
     """
     This class handles the Terminal setup and access for seamless read/write access to remote shells.
+
+    This class switches the terminal into *raw mode*!
+
+    When ``echo`` is ``True``, then all entered character will be printed to *stdout*.
+    Otherwise entering a character will be invisible when not echoed by the connected device.
     """
-    def __init__(self, *, buffered=True, escape="\033"):
-        self.buffered   = buffered
-        self.escape     = escape
+    def __init__(self, *, echo=True, escape="\033"):
+        self.echo   = echo
+        self.escape = escape
 
         # Setup local terminal
-        if not self.buffered:
-            self.stdinfd          = sys.stdin.fileno()
-            self.oldstdinsettings = termios.tcgetattr(self.stdinfd)
-            tty.setraw(self.stdinfd) # from now on, end-line must be "\r\n"
+        self.stdinfd          = sys.stdin.fileno()
+        self.oldstdinsettings = termios.tcgetattr(self.stdinfd)
+        tty.setraw(self.stdinfd) # from now on, end-line must be "\r\n"
 
 
 
     def __del__(self):
-        if not self.buffered:
-            termios.tcsetattr(self.stdinfd, termios.TCSADRAIN, self.oldstdinsettings)
+        termios.tcsetattr(self.stdinfd, termios.TCSADRAIN, self.oldstdinsettings)
 
 
 
@@ -52,11 +55,11 @@ class Terminal(object):
         string = ""
 
         while True:
-            char = sys.stdin.read(1)
-            if char == "\n":
-                break
-            elif char == "\r":  # Ignore \r in internal representation
+            char = self.ReadCharacter()
+            if char == "\n":  # Ignore \n - should never appear in raw mode
                 continue
+            elif char == "\r":
+                break
             else:
                 string += char
 
@@ -66,9 +69,16 @@ class Terminal(object):
     def ReadCharacter(self):
         r"""
         This method returns one single character of the users input.
-        In unbuffered mode, enter only produces an \r, not an \n
+        In raw (``echo = False``) mode, enter only produces an \r, not an \n
+
+        If echo mode is enabled, the entered character gets printed to *stdout*.
         """
         char = sys.stdin.read(1)
+        if self.echo:
+            if char == self.escape:
+                self.Write("␛") # Print ESC Unicode character then user hits escape key
+            else:
+                self.Write(char)
         return char
 
 
@@ -76,12 +86,17 @@ class Terminal(object):
     def Write(self, string):
         r"""
         This method handles the output and adopts the line ending to the terminal configuration
+
+        In raw mode line ending must be ``\r\n``.
+        When an input of an enter (only ``\r``) shall be echoed, an additional ``\n`` needs to be written.
+
+        This method takes care that there is always ``\r\n``, independent if only ``\r`` or ``\n`` is used as line break.
         """
-        if not self.buffered:
-            # In the unbuffered input mode, the output also expects an explicit \r
-            # This is because of the changed, none-default settings of the TTY
-            # Here I take care that the \r\n sequence is correct
-            string = string.replace("\n", "\r\n").replace("\r\r", "\r")
+        # In the raw input mode (no echo), the output also expects an explicit \r
+        # This is because of the changed, none-default settings of the TTY
+        # Here I take care that the \r\n sequence is correct
+        string = string.replace("\n", "\r\n").replace("\r\r", "\r")
+        string = string.replace("\r", "\r\n").replace("\n\n", "\n")
 
         sys.stdout.write(string)
         sys.stdout.flush()

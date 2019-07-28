@@ -5,7 +5,7 @@ sterm \- a minimal serial terminal that focus on being easy to use. A client sim
 .SH SYNOPSIS
 .B sterm
 [\fB\-h\fR | \fB\-\-help\fR] 
-[\fB\-u\fR | \fB\-\-unbuffered\fR]
+[\fB\-n\fR | \fB\-\-noecho\fR]
 [\fB\-\-escape \fIcharacter\fR]
 [\fB\-\-binary\fR]
 [\fB\-b \fIbaudrate\fR | \fB\-\-baudrate \fIbaudrate\fR]
@@ -17,18 +17,18 @@ sterm \- a minimal serial terminal that focus on being easy to use. A client sim
 sterm is a minimal serial terminal that focus on being easy to use and not sucking. - This client simply works.
 .br
 It has inline input and supports Unicode (utf-8).
+Each key typed gets directly send to the remote device.
 It writes whatever it receives to stdout so that also ANSI escape sequences work as expected.
 .br
 With the \fI--binary\fR option, the received data will be output byte wise as hexadecimal numbers.
 Ideal for debugging.
 .br
-sterm has some internal commands, listed below.
+sterm has some internal commands (escape sequences), listed below.
 To enter a command you first have to enter an escape character.
 Entering the escape character (see \fI--escape\fR) starts a command input.
 If this command is known it gets executed.
-If the command is unknown the input gets rejected in unbuffered mode, and send to the remote terminal in buffered mode.
-When entering the escape character a second time in unbuffered mode,
-the escape character gets send to the remove client.
+If the command is unknown the input gets rejected.
+When entering the escape character a second time, the escape character gets send to the remove client.
 
 
 .SH OPTIONS
@@ -39,10 +39,10 @@ Display a help, version number and exit
 .BR \-\-binary
 Print hexadecimal values instead of Unicode characters. (Only applied on output, input will still be UTF-8)
 .TP
-.BR \-u ", " \-\-unbuffered
-Use this flag to avoid input buffering. By default, sterm reads a whole line, and then sends all data at once.
-When this flag is set, each character gets send directly, except when entering the escape key. Then you can enter a command that sterm handles internal.
-In unbuffered mode, the input gets not echoed by sterm.
+.BR \-n ", " \-\-noecho
+Use this flag to avoid echoing the keys the user pressed to stdout.
+When this flag is set, each character gets send directly, except when entering the escape key.
+Then you can enter a command (escape sequence) that sterm handles internal.
 .TP
 .BR \-\-escape " " \fIcharacter\fR
 With this parameter, the escape character can be changed.
