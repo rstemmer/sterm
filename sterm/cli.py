@@ -19,6 +19,9 @@
 
 import time
 import argparse
+import termios
+import sys
+import tty
 from threading      import Thread
 from sterm.uart     import UART, UARTMode
 from sterm.terminal import Terminal
@@ -104,7 +107,8 @@ def ReceiveData(uart, term):
 def ReadCommand(term):
     """
     This function reads an escape sequence.
-    In case the terminal mode is ``echo = False``, this function echos all typed characters for this sequence.
+    Independent if the terminal mode is ``echo = False``,
+    all entered keys will be echoed.
 
     Returns:
         A command string
@@ -115,7 +119,7 @@ def ReadCommand(term):
         term.Write("␛") # Print ESC Unicode character then user hits escape key
 
     while True:
-        char = term.ReadCharacter()
+        char = term.ReadCharacter(echo=True)
         if char == "\r":
             break
         elif char == ESCAPECHAR:
@@ -123,12 +127,10 @@ def ReadCommand(term):
                 command = ESCAPECHAR
             break
         else:
-            if not term.echo:
-                term.Write(char)
             command += char
 
-    if not term.echo:
-        term.Write("\n")
+    #if not term.echo:
+    #    term.Write("\n")
     return command
 
 
@@ -201,8 +203,20 @@ def main():
     else:
         uartmode = UARTMode.TEXT
 
+    # Setup local terminal
+    stdinfd          = sys.stdin.fileno()
+    oldstdinsettings = termios.tcgetattr(stdinfd)
+    tty.setraw(stdinfd) # from now on, end-line must be "\r\n"
+
     # Open remote terminal device
-    uart = UART(args.device, args.baudrate, args.format, uartmode=uartmode, logpath=args.write)
+    try:
+        uart = UART(args.device, args.baudrate, args.format, uartmode=uartmode, logpath=args.write)
+    except Exception as e:
+        print("Connection to device %s failed with exception \"%s\""%(args.device, str(e)), file=sys.stderr)
+    finally:
+        termios.tcsetattr(stdinfd, termios.TCSADRAIN, oldstdinsettings)
+        exit(1)
+
     term = Terminal(echo= not args.noecho, escape=args.escape)
 
     # Start receiver thread
@@ -213,7 +227,10 @@ def main():
     try:
         HandleUserInput(uart, term);
     except Exception as e:
-        print(e)
+        print("sterm exits after following error occurred: \"%s\""%(args.device, str(e)), file=sys.stderr)
+    finally:
+        termios.tcsetattr(stdinfd, termios.TCSADRAIN, oldstdinsettings)
+        exit(1)
 
     # Shutdown receiver thread
     global ShutdownReceiver
@@ -223,6 +240,7 @@ def main():
 
     # Clean up everything
     uart.Disconnect()
+    termios.tcsetattr(stdinfd, termios.TCSADRAIN, oldstdinsettings)
 
 
 if __name__ == '__main__':

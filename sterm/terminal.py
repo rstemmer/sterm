@@ -15,23 +15,19 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.  #
 
 import sys
-import tty
-import termios
 
 
 class Terminal(object):
     r"""
-    This class handles the Terminal setup for seamless read/write access to remote shells.
+    This class handles the Terminal I/O for seamless read/write access to remote shells.
 
-    This class switches the terminal into *raw mode*!
+    This class expects the terminal in *raw mode*!
     In raw mode, the enter key is represented by ``"\r"`` and new-line by ``"\r\n"``.
     This class takes care of this situation.
 
     When ``echo`` is ``True``, then all entered character will be printed to *stdout*.
     Otherwise entering a character will be invisible when not echoed by the connected device.
     When the ``escape`` character is entered, ``"␛"`` gets printed to *stdout*.
-
-    The default terminal configuration gets restored when the instance of this class gets deleted.
 
     Args:
         echo (bool): Enable or disable printing the character that got pressed by the user on the keyboard. Default is ``True``
@@ -50,18 +46,9 @@ class Terminal(object):
         if len(escape) != 1:
             raise ValueError("Escape-argument should only contain one single character!")
 
-        self.echo   = echo
-        self.escape = escape
-
-        # Setup local terminal
-        self.stdinfd          = sys.stdin.fileno()
-        self.oldstdinsettings = termios.tcgetattr(self.stdinfd)
-        tty.setraw(self.stdinfd) # from now on, end-line must be "\r\n"
-
-
-
-    def __del__(self):
-        termios.tcsetattr(self.stdinfd, termios.TCSADRAIN, self.oldstdinsettings)
+        self.echo    = echo
+        self.escape  = escape
+        self.stdinfd = sys.stdin.fileno()
 
 
 
@@ -88,19 +75,33 @@ class Terminal(object):
 
 
 
-    def ReadCharacter(self):
+    def ReadCharacter(self, echo=None):
         r"""
         This method returns one single character of the users input.
 
         Keep in mind that in raw mode, enter only produces an \r, not an \n
 
         If echo mode is enabled, the entered character gets printed to *stdout*.
+        The echo mode of an instance of this class can be overwritten temporary by setting the ``echo`` parameter to ``True`` or ``False``.
+        (Default is ``None`` which means, that the echo mode defined on instance creation is used)
+
+        Args:
+            echo (bool): (Optional) Enable or disable echo mode temporary
 
         Returns:
             One singe character of type ``str``.
+
+        Raises:
+            TypeError: When the ``echo`` parameter is not ``None`` and not a boolean.
         """
+        if echo == None:
+            echo = self.echo
+
+        if type(echo) is not bool:
+            raise TypeError("echo argument must be a boolean or None.")
+
         char = sys.stdin.read(1)
-        if self.echo:
+        if echo:
             if char == self.escape:
                 self.Write("␛") # Print ESC Unicode character then user hits escape key
             else:
