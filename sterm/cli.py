@@ -25,6 +25,7 @@ import tty
 from threading      import Thread
 from sterm.uart     import UART, UARTMode
 from sterm.terminal import Terminal
+from sterm.config   import Config
 
 
 
@@ -213,7 +214,6 @@ def main():
         uart = UART(args.device, args.baudrate, args.format, uartmode=uartmode, logpath=args.write)
     except Exception as e:
         print("Connection to device %s failed with exception \"%s\""%(args.device, str(e)), file=sys.stderr)
-    finally:
         termios.tcsetattr(stdinfd, termios.TCSADRAIN, oldstdinsettings)
         exit(1)
 
@@ -228,7 +228,6 @@ def main():
         HandleUserInput(uart, term);
     except Exception as e:
         print("sterm exits after following error occurred: \"%s\""%(args.device, str(e)), file=sys.stderr)
-    finally:
         termios.tcsetattr(stdinfd, termios.TCSADRAIN, oldstdinsettings)
         exit(1)
 
