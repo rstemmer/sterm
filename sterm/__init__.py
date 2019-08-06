@@ -1,2 +1,2 @@
-__all__ = ["terminal", "uart", "cli"]
+__all__ = ["terminal", "uart", "config", "cli"]
 
