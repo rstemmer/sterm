@@ -25,7 +25,6 @@ import tty
 from threading      import Thread
 from sterm.uart     import UART, UARTMode
 from sterm.terminal import Terminal
-from sterm.config   import Config
 
 
 
