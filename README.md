@@ -1,8 +1,7 @@
 <h3 align="center">sterm</h3>
 
 <div align="center">
-  [![Status: Active](https://img.shields.io/badge/status-active-success.svg)]() 
-  [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+  Status: Active - License: GPL v3
 </div>
 
 ---
