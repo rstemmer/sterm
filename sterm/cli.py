@@ -28,7 +28,7 @@ from sterm.terminal import Terminal
 
 
 
-VERSION = "6.0.0"
+VERSION = "6.0.1"
 
 
 # This global variable is used to shutdown the thread used

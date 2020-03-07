@@ -1,3 +1,4 @@
+6.0.1 - 07.03.2020: Issue in setup.py fixed
 6.0.0 - 07.03.2020: Code refactoring and python packaging 
                     --unbuffered got removed. All input are now unbuffered.
                     --noecho added to suppress echoing entered keys (as it was like in unbuffered mode)
