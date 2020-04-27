@@ -47,15 +47,33 @@ This makes the Linux console usage seamlessly like using telnet or ssh.
 ## 🏁 Getting Started <a name = "getting_started"></a>
 
 There are two ways to install _sterm_.
-Directly using `pip` or from the cloned repository.
+**A:** Directly using `pip` or **B:** from the cloned repository.
 
-### Installation using pip
+### Precondition
+
+_sterm_ requires Python 3 to run.
+Before you start installing _sterm_ make sure you use the correct version.
+Depending on your distribution, the you may need to use `pip3` instead of `pip`.
+You can check your Python version by executing the following commands:
+
+```bash
+python --version
+pip --version
+```
+
+Both should print a version number beginning with 3.
+If not, you need to use `pip3` to explicit use Python 3.
+
+For a user-only installation, call `pip ...` as user.
+For a system-wide installation you need to be root, or call `sudo pip ...`.
+
+### A: Installation using pip
 
 ```bash
 pip install sterm
 ```
 
-### Installation from Repository
+### B: Installation from Repository
 
 ```bash
 # Download
@@ -70,18 +88,42 @@ pip install .
 
 ```
 
+### Check installation
+
+After installation you can check if _sterm_ is successfully installed using `whereis`.
+```bash
+whereis sterm
+#Outpu: sterm: /usr/bin/sterm /usr/man/man1/sterm.1
+```
+There should be two files listed.
+ - `sterm` is the executable, the command you run.
+ - `sterm.1` is the manual for `sterm` that can be read by executing `man sterm` on the command line.
+
+On a system-wide installation, _sterm_ is usually installed to /usr/bin.
+If you only installed to for a single user, it is usually installed to ~/.local/bin
+
+During the installation process, `pip` should install all dependencies recursively.
+To be sure nothing is missing, you can run `pip check sterm`.
+It prints all missing dependencies or version conflicts.
+You can install missing dependencies via `pip`.
+When version conflicts are listed, you can hope they do not matter or install an explicit version via `pip` as well.
+
 
 ## 🎈 Usage <a name="usage"></a>
 
-*sterm* has three interfaces:
+To execute _sterm_ you just have to call the `sterm` command in your shell.
+`sterm` requires one argument, the device you want to access.
+All other arguments listed in the subsection below are optional.
 
-1. Configuration files
-2. The command line interface
-3. Escape commands
+UART-Devices are listed in the /dev directory with the prefix `tty`.
+Most UART-Devices are addressable via /dev/ttyUSBx or /dev/ttyACMx were x is a number depending on the order they got recognized by the Linux kernel.
 
-### Configuration via files
 
-TODO - Not yet implemented.
+*sterm* has two interfaces:
+
+1. The command line interface
+2. Escape commands
+
 
 ### Command Line Arguments
 
