@@ -1,7 +1,7 @@
 <h3 align="center">sterm</h3>
 
 <div align="center">
-  Status: Active - License: GPL v3
+  Status: 🟢 Active - License: GPL v3
 </div>
 
 ---
@@ -9,6 +9,12 @@
 <p align="center"> sterm is a minimal serial terminal that focus on being easy to use. - This client just does its job.
     <br/>
 </p>
+
+```bash
+pip install sterm
+sterm --help
+sterm /dev/ttyUSB0
+```
 
 
 ## 📝 Table of Contents
