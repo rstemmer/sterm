@@ -22,6 +22,7 @@ sterm /dev/ttyUSB0
 - [Getting Started](#getting_started)
 - [Usage](#usage)
 - [Built Using](#built_using)
+- [Related Work](#related_work)
 - [Acknowledgments](#acknowledgement)
 
 
@@ -218,6 +219,9 @@ vim sterm/cli.py
 ./pkg-make.sh
 ```
 
+## ⛓ Related Work <a name ="related_work"></a>
+
+ - [tio](https://github.com/tio/tio) A more feature rich alternative to `sterm` with a similar motivation
 
 ## 🎉 Acknowledgements <a name = "acknowledgement"></a>
 
