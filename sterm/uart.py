@@ -198,9 +198,9 @@ class UART(object):
 
         if self.logfile:
             if self.uartmode == UARTMode.TEXT:
-                log.write(string)
+                self.logfile.write(string)
             else:
-                log.write(data)
+                self.logfile.write(data)
 
         return string
 
