@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # STERM, a serial communication terminal with server capabilities        #
-# Copyright (C) 2013-2020  Ralf Stemmer (ralf.stemmer@gmx.net)           #
+# Copyright (C) 2013-2023  Ralf Stemmer (ralf.stemmer@gmx.net)           #
 #                                                                        #
 # This program is free software: you can redistribute it and/or modify   #
 # it under the terms of the GNU General Public License as published by   #
@@ -28,7 +28,7 @@ from sterm.terminal import Terminal
 
 
 
-VERSION = "6.0.1"
+VERSION = "6.0.2"
 
 
 # This global variable is used to shutdown the thread used

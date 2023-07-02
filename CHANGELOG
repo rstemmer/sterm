@@ -1,3 +1,4 @@
+6.0.2 - 02.07.2023: --write function fixed by Sam Grove (https://github.com/sg-)
 6.0.1 - 07.03.2020: Issue in setup.py fixed
 6.0.0 - 07.03.2020: Code refactoring and python packaging 
                     --unbuffered got removed. All input are now unbuffered.
