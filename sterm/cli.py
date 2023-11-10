@@ -37,7 +37,7 @@ ShutdownReceiver = False
 
 
 cli = argparse.ArgumentParser(
-    description="A minimal serial ternimal.",
+    description="A minimal serial terminal. To exit the program, press the escape key and enter 'exit' followed by enter.",
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
 
@@ -46,13 +46,13 @@ cli.add_argument(      "--binary",      default=False,                action="st
 cli.add_argument("-n", "--noecho",      default=False,                action="store_true",
     help="Direct character transmission. Does not echo the user input to stdout.")
 cli.add_argument(      "--escape",      default="\033",     type=str, action="store",
-    help="Change the default escape character (escape)")
+    help="Change the default escape character (␛).")
 cli.add_argument("-b", "--baudrate",    default=115200,     type=int, action="store",
     help="The baudrate used for the communication.")
 cli.add_argument("-f", "--format",      default="8N1",      type=str, action="store",
     help="Configuration-triple: xyz with x=bytelength in bits {5,6,7,8}, y=parity {N,E,O}, z=stopbits {1,2}.")
 cli.add_argument("-w", "--write",       metavar="logfile",  type=str, action="store",
-    help="Write received data into a file")
+    help="Write received data into a file.")
 cli.add_argument("device",                                  type=str, action="store",
     help="Path to the serial communication device.")
 
@@ -81,7 +81,7 @@ def ReceiveData(uart, term):
 
         # Shutdown receiver thread
         ShutdownReceiver = True
-        if ReceiverThread.isAlive():
+        if ReceiverThread.is_alive():
             ReceiverThread.join()
 
 
@@ -233,7 +233,7 @@ def main():
     # Shutdown receiver thread
     global ShutdownReceiver
     ShutdownReceiver = True
-    if ReceiverThread.isAlive():
+    if ReceiverThread.is_alive():
         ReceiverThread.join()
 
     # Clean up everything
