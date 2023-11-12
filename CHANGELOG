@@ -1,3 +1,4 @@
+6.0.3 - 12.11.2023: Deprecated thread API updated (.isAlive() → .is_alive() since Python 3.8) by gizmo1904 (https://github.com/gizmo1904)
 6.0.2 - 02.07.2023: --write function fixed by Sam Grove (https://github.com/sg-)
 6.0.1 - 07.03.2020: Issue in setup.py fixed
 6.0.0 - 07.03.2020: Code refactoring and python packaging 
