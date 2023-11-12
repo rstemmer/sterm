@@ -58,7 +58,7 @@ There are two ways to install _sterm_.
 
 ### Precondition
 
-_sterm_ requires Python 3 to run.
+_sterm_ requires Python 3.8+ to run.
 Before you start installing _sterm_ make sure you use the correct version.
 Depending on your distribution, the you may need to use `pip3` instead of `pip`.
 You can check your Python version by executing the following commands:
